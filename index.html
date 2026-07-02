@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ProductForge AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#090C14;
+  --bg-elev:#0F1524;
+  --surface:#141B2E;
+  --surface-2:#1A2338;
+  --border:#253154;
+  --text:#F1F4FA;
+  --text-dim:#8D96B3;
+  --text-faint:#5C6485;
+  --ember:#FF6A39;
+  --ember-2:#FFB44D;
+  --ember-glow:rgba(255,106,57,0.35);
+  --good:#3FD68A;
+  --bad:#FF5D6C;
+  --radius:10px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
+body{min-height:100vh;}
+h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif;margin:0;letter-spacing:-0.01em;}
+p{margin:0;}
+.mono{font-family:'JetBrains Mono',monospace;}
+button{font-family:inherit;cursor:pointer;}
+::selection{background:var(--ember-glow);}
+
+.forge-underline{
+  display:inline-block; height:3px; width:56px; border-radius:3px;
+  background:linear-gradient(90deg,var(--ember),var(--ember-2));
+  box-shadow:0 0 12px var(--ember-glow);
+  margin-top:10px;
+}
+
+#app{display:flex; min-height:100vh;}
+
+/* Sidebar */
+.sidebar{
+  width:230px; flex-shrink:0; background:var(--bg-elev); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; padding:20px 14px; position:sticky; top:0; height:100vh;
+}
+.brand{display:flex; align-items:center; gap:10px; padding:6px 8px 22px 8px;}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--ember),var(--ember-2));box-shadow:0 0 16px var(--ember-glow);}
+.brand-name{font-weight:700; font-size:15px;}
+.brand-sub{font-size:10px; color:var(--text-faint); letter-spacing:0.08em; text-transform:uppercase;}
+
+.nav-item{
+  display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:8px; color:var(--text-dim);
+  font-size:13.5px; font-weight:500; margin-bottom:2px; border:1px solid transparent; transition:all .15s;
+}
+.nav-item:hover{background:var(--surface); color:var(--text);}
+.nav-item.active{background:var(--surface-2); color:var(--text); border-color:var(--border);}
+.nav-item.active .nav-dot{background:var(--ember); box-shadow:0 0 8px var(--ember-glow);}
+.nav-dot{width:6px;height:6px;border-radius:50%;background:var(--text-faint); flex-shrink:0;}
+.nav-section-label{font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:var(--text-faint); margin:16px 10px 6px;}
+
+.sidebar-foot{margin-top:auto; padding:10px 8px; border-top:1px solid var(--border); font-size:11px; color:var(--text-faint);}
+
+/* Main */
+.main{flex:1; min-width:0; padding:28px 34px 60px; max-width:1240px;}
+.topbar{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:28px; flex-wrap:wrap; gap:14px;}
+.page-title{font-size:24px; font-weight:700;}
+.page-sub{color:var(--text-dim); font-size:13.5px; margin-top:4px; max-width:560px;}
+
+.btn{
+  display:inline-flex; align-items:center; gap:8px; padding:10px 16px; border-radius:8px; border:1px solid var(--border);
+  background:var(--surface); color:var(--text); font-size:13px; font-weight:600; transition:all .15s;
+}
+.btn:hover{background:var(--surface-2); border-color:#37426b;}
+.btn-primary{
+  background:linear-gradient(135deg,var(--ember),#E8511F); border:none; color:#0A0A0A;
+  box-shadow:0 4px 18px var(--ember-glow);
+}
+.btn-primary:hover{filter:brightness(1.08); box-shadow:0 6px 22px var(--ember-glow);}
+.btn-ghost{background:transparent; border:1px solid var(--border);}
+.btn-sm{padding:7px 12px; font-size:12px;}
+.btn:disabled{opacity:.5; cursor:not-allowed;}
+
+.card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px;}
+.card-tight{padding:14px 16px;}
+.grid{display:grid; gap:16px;}
+.grid-2{grid-template-columns:1fr 1fr;}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+@media(max-width:900px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr;} .sidebar{display:none;} .main{padding:18px;}}
+
+label{font-size:12px; font-weight:600; color:var(--text-dim); display:block; margin-bottom:6px;}
+input,select,textarea{
+  width:100%; background:var(--bg-elev); border:1px solid var(--border); border-radius:8px; color:var(--text);
+  padding:10px 12px; font-size:13.5px; font-family:inherit; outline:none;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--ember);}
+textarea{resize:vertical; min-height:80px;}
+.field{margin-bottom:14px;}
+.hint{font-size:11.5px; color:var(--text-faint); margin-top:5px;}
+
+.tag{display:inline-flex; align-items:center; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; background:var(--surface-2); color:var(--text-dim); border:1px solid var(--border);}
+.tag-good{color:var(--good); border-color:rgba(63,214,138,.3); background:rgba(63,214,138,.08);}
+.tag-ember{color:var(--ember-2); border-color:rgba(255,106,57,.3); background:rgba(255,106,57,.08);}
+
+.metric-card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px;}
+.metric-label{font-size:11.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px;}
+.metric-value{font-size:26px; font-weight:700; font-family:'Space Grotesk',sans-serif;}
+.metric-delta{font-size:11.5px; margin-top:6px;}
+
+.empty{border:1px dashed var(--border); border-radius:var(--radius); padding:36px 20px; text-align:center; color:var(--text-dim);}
+.empty h4{color:var(--text); margin-bottom:6px;}
+
+.spinner{width:16px;height:16px;border-radius:50%; border:2px solid rgba(255,255,255,.2); border-top-color:var(--ember); animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.tabs{display:flex; gap:6px; border-bottom:1px solid var(--border); margin-bottom:20px; flex-wrap:wrap;}
+.tab{padding:9px 14px; font-size:12.5px; font-weight:600; color:var(--text-dim); border-bottom:2px solid transparent; margin-bottom:-1px;}
+.tab.active{color:var(--text); border-color:var(--ember);}
+
+.modal-backdrop{position:fixed; inset:0; background:rgba(4,6,12,.7); backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; z-index:100; padding:20px;}
+.modal{background:var(--surface); border:1px solid var(--border); border-radius:14px; max-width:640px; width:100%; max-height:86vh; overflow-y:auto; padding:26px;}
+
+.opt-card{border:1px solid var(--border); border-radius:var(--radius); padding:16px; cursor:pointer; transition:all .15s; background:var(--bg-elev);}
+.opt-card:hover{border-color:var(--ember); box-shadow:0 0 0 1px var(--ember-glow);}
+.opt-card.selected{border-color:var(--ember); background:rgba(255,106,57,.06);}
+
+.progress-bar{height:6px; background:var(--bg-elev); border-radius:6px; overflow:hidden; border:1px solid var(--border);}
+.progress-fill{height:100%; background:linear-gradient(90deg,var(--ember),var(--ember-2)); box-shadow:0 0 10px var(--ember-glow);}
+
+.toast{position:fixed; bottom:22px; right:22px; background:var(--surface-2); border:1px solid var(--border); padding:12px 16px; border-radius:8px; font-size:13px; z-index:200; box-shadow:0 8px 30px rgba(0,0,0,.4);}
+.toast.err{border-color:rgba(255,93,108,.4); color:#ffb3ba;}
+.toast.good{border-color:rgba(63,214,138,.4); color:#a8f0c8;}
+
+a{color:var(--ember-2); text-decoration:none;}
+.divider{height:1px; background:var(--border); margin:18px 0;}
+.flex{display:flex;}
+.between{justify-content:space-between;}
+.center{align-items:center;}
+.gap8{gap:8px;} .gap12{gap:12px;} .gap16{gap:16px;}
+.mb8{margin-bottom:8px;} .mb12{margin-bottom:12px;} .mb16{margin-bottom:16px;} .mb20{margin-bottom:20px;}
+.small{font-size:12px;} .dim{color:var(--text-dim);} .faint{color:var(--text-faint);}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast-root"></div>
+
+<script>
+/* ============================================================
+   ProductForge AI — single-file app
+   Persistence: window.storage (personal scope, key: "pf_state_v2")
+   AI content generation: Anthropic API (client-side fetch, no key needed here)
+   Video generation: HeyGen / Creatify (requires user API key + backend proxy
+     in production for CORS — this build attempts direct calls and explains
+     the proxy requirement clearly when it fails, per the Railway/Express
+     architecture already planned for this suite)
+   ============================================================ */
+
+const STORAGE_KEY = "pf_state_v2";
+
+const DEFAULT_STATE = {
+  onboardingDone: false,
+  onboardingStep: 0,
+  products: [],       // {id,title,niche,format,template,pages,createdAt,downloadCount,content,priceUSD,priceZAR,storeUrl,gumroadUrl,payhipUrl,whopUrl,translations:[],published}
+  marketing: {},       // productId -> {scripts:[],adcopy:[],captions:[],calendar:[]}
+  videos: {},           // productId -> [{id,scriptId,status,provider,url,createdAt,postedTo:[]}]
+  settings: {
+    heygenKey:"", creatifyKey:"",
+    gumroadKey:"", payhipKey:"", whopKey:"",
+    n8nWebhook:"",
+    monthlyGoalUSD: 1500,
+    zarRate: 18.5
+  },
+  activeTab: "dashboard"
+};
+
+let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+let uiFlags = { loading:false, modal:null };
+
+/* ---------- storage helpers ---------- */
+async function loadState(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false);
+    if(res && res.value){
+      const parsed = JSON.parse(res.value);
+      state = Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATE)), parsed);
+    }
+  }catch(e){ /* no saved state yet — fine */ }
+  render();
+}
+let saveTimer = null;
+function persist(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async ()=>{
+    try{ await window.storage.set(STORAGE_KEY, JSON.stringify(state), false); }
+    catch(e){ showToast("Couldn't save — storage error", true); }
+  }, 250);
+}
+
+function showToast(msg, isErr, isGood){
+  const root = document.getElementById('toast-root');
+  const el = document.createElement('div');
+  el.className = 'toast' + (isErr?' err':'') + (isGood?' good':'');
+  el.textContent = msg;
+  root.appendChild(el);
+  setTimeout(()=>el.remove(), 3800);
+}
+
+function uid(){ return Math.random().toString(36).slice(2,10); }
+
+/* ---------- Anthropic API helper ---------- */
+function extractJson(raw){
+  let clean = raw.replace(/```json|```/g,"").trim();
+  // Grab the outermost {...} or [...] block in case the model added any stray prose
+  const firstObj = clean.indexOf('{'); const firstArr = clean.indexOf('[');
+  let start = -1;
+  if(firstObj===-1) start = firstArr;
+  else if(firstArr===-1) start = firstObj;
+  else start = Math.min(firstObj, firstArr);
+  const lastObj = clean.lastIndexOf('}'); const lastArr = clean.lastIndexOf(']');
+  const end = Math.max(lastObj, lastArr);
+  if(start!==-1 && end!==-1 && end>start) clean = clean.slice(start, end+1);
+  // Common model slip-ups: trailing commas before } or ]
+  clean = clean.replace(/,\s*([}\]])/g, '$1');
+  return JSON.parse(clean);
+}
+
+async function callClaude(userPrompt, systemPrompt, wantJson){
+  const body = {
+    model: "claude-sonnet-4-6",
+    max_tokens: 4000,
+    messages: [{role:"user", content: userPrompt}]
+  };
+  if(systemPrompt) body.system = systemPrompt;
+  let res;
+  try{
+    res = await fetch("/api/claude", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(body)
+    });
+  }catch(networkErr){
+    throw new Error("Network error reaching the API — check your connection and try again.");
+  }
+  if(!res.ok){
+    let detail = "";
+    try{ const errBody = await res.json(); detail = errBody?.error?.message || ""; }catch(e){}
+    throw new Error(`API error ${res.status}${detail ? ": " + detail : ""}`);
+  }
+  const data = await res.json();
+  const text = (data.content||[]).map(b=>b.text||"").join("\n");
+  if(wantJson){
+    try{
+      return extractJson(text);
+    }catch(parseErr){
+      console.error("Raw model output that failed to parse:", text);
+      throw new Error("The AI's response wasn't valid JSON — this usually clears up on retry.");
+    }
+  }
+  return text;
+}
+
+/* ============================================================
+   RENDER — root router
+   ============================================================ */
+function render(){
+  const app = document.getElementById('app');
+  if(!state.onboardingDone){
+    app.innerHTML = renderOnboarding();
+    bindOnboarding();
+    return;
+  }
+  app.innerHTML = `
+    ${renderSidebar()}
+    <div class="main">${renderTab(state.activeTab)}</div>
+  `;
+  bindGlobal();
+  bindTab(state.activeTab);
+  if(uiFlags.modal){
+    document.body.insertAdjacentHTML('beforeend', uiFlags.modal.html);
+    uiFlags.modal.bind();
+  }
+}
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+const NAV = [
+  {id:"dashboard", label:"Dashboard", section:"Overview"},
+  {id:"create", label:"Create Product", section:"Build"},
+  {id:"store", label:"Storefront", section:"Build"},
+  {id:"marketing", label:"Marketing Hub", section:"Build"},
+  {id:"video", label:"Video Studio", section:"Build"},
+  {id:"analytics", label:"Finance & Analytics", section:"Grow"},
+  {id:"linkbio", label:"Link in Bio", section:"Grow"},
+  {id:"settings", label:"Settings", section:"Grow"},
+];
+function renderSidebar(){
+  let sections = {};
+  NAV.forEach(n=>{ sections[n.section] = sections[n.section]||[]; sections[n.section].push(n); });
+  let html = `<div class="sidebar"><div class="brand">
+      <div class="brand-mark"></div>
+      <div><div class="brand-name">ProductForge AI</div><div class="brand-sub">Project X</div></div>
+    </div>`;
+  Object.keys(sections).forEach(sec=>{
+    html += `<div class="nav-section-label">${sec}</div>`;
+    sections[sec].forEach(n=>{
+      html += `<div class="nav-item ${state.activeTab===n.id?'active':''}" data-nav="${n.id}">
+        <span class="nav-dot"></span>${n.label}
+      </div>`;
+    });
+  });
+  html += `<div class="sidebar-foot">${state.products.length} product${state.products.length!==1?'s':''} forged</div></div>`;
+  return html;
+}
+function bindGlobal(){
+  document.querySelectorAll('[data-nav]').forEach(el=>{
+    el.onclick = ()=>{ state.activeTab = el.dataset.nav; render(); };
+  });
+}
+
+/* ============================================================
+   ONBOARDING
+   ============================================================ */
+const OB_STEPS = [
+  {title:"Welcome to ProductForge AI", body:"Forge a digital product, build a store around it, generate marketing and video content, then track the money coming in — all from one place. Five short steps, skippable any time."},
+  {title:"Step 1 — Pick a niche", body:"Discovery Mode scans a category for real pain points and hands you 8 product ideas with demand scores. Custom Mode lets you type your own idea instead."},
+  {title:"Step 2 — Generate your first product", body:"Claude writes the full guide — real sections, real advice, not placeholder text — and applies one of five visual templates."},
+  {title:"Step 3 — Set up your store", body:"Every product gets a listing page. Add your Gumroad, Payhip, or Whop link and set your own price."},
+  {title:"Step 4 — Marketing + Video", body:"Generate scripts, ad copy, and captions, then turn the script into an actual AI-avatar video in the Video Studio and push it out to your platforms."},
+];
+function renderOnboarding(){
+  const step = state.onboardingStep;
+  const s = OB_STEPS[step];
+  const pct = Math.round(((step+1)/OB_STEPS.length)*100);
+  return `
+  <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div class="card" style="max-width:520px; width:100%;">
+      <div class="flex between center mb16">
+        <span class="tag tag-ember">Step ${step+1} / ${OB_STEPS.length}</span>
+        <button class="btn btn-ghost btn-sm" data-ob="skip">Skip for now</button>
+      </div>
+      <div class="progress-bar mb20"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <h2 style="font-size:22px; margin-bottom:10px;">${s.title}</h2>
+      <div class="forge-underline"></div>
+      <p class="dim" style="margin-top:14px; line-height:1.6; font-size:14px;">${s.body}</p>
+      <div class="flex gap12" style="margin-top:26px;">
+        ${step>0?`<button class="btn btn-ghost" data-ob="back">Back</button>`:''}
+        <button class="btn btn-primary" data-ob="next" style="margin-left:auto;">${step===OB_STEPS.length-1?'Start building':'Continue'}</button>
+      </div>
+    </div>
+  </div>`;
+}
+function bindOnboarding(){
+  document.querySelector('[data-ob="skip"]').onclick = ()=>{ state.onboardingDone=true; persist(); render(); };
+  const back = document.querySelector('[data-ob="back"]');
+  if(back) back.onclick = ()=>{ state.onboardingStep--; render(); };
+  document.querySelector('[data-ob="next"]').onclick = ()=>{
+    if(state.onboardingStep === OB_STEPS.length-1){ state.onboardingDone=true; persist(); render(); }
+    else { state.onboardingStep++; render(); }
+  };
+}
+
+/* ============================================================
+   TAB ROUTER
+   ============================================================ */
+function renderTab(tab){
+  switch(tab){
+    case "dashboard": return renderDashboard();
+    case "create": return renderCreate();
+    case "store": return renderStore();
+    case "marketing": return renderMarketing();
+    case "video": return renderVideo();
+    case "analytics": return renderAnalytics();
+    case "linkbio": return renderLinkBio();
+    case "settings": return renderSettings();
+    default: return "";
+  }
+}
+function bindTab(tab){
+  switch(tab){
+    case "dashboard": return bindDashboard();
+    case "create": return bindCreate();
+    case "store": return bindStore();
+    case "marketing": return bindMarketing();
+    case "video": return bindVideo();
+    case "analytics": return bindAnalytics();
+    case "linkbio": return bindLinkBio();
+    case "settings": return bindSettings();
+  }
+}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+function renderDashboard(){
+  const totalSales = state.products.reduce((a,p)=>a+(p.sales||0),0);
+  const totalRevUSD = state.products.reduce((a,p)=>a+((p.sales||0)*(p.priceUSD||0)),0);
+  const goalPct = Math.min(100, Math.round((totalRevUSD/(state.settings.monthlyGoalUSD||1))*100));
+  return `
+  <div class="topbar">
+    <div><div class="page-title">Dashboard</div><div class="page-sub">Everything you've forged, at a glance.</div></div>
+    <button class="btn btn-primary" data-nav="create">+ New product</button>
+  </div>
+  <div class="grid grid-4 mb20">
+    <div class="metric-card"><div class="metric-label">Products</div><div class="metric-value">${state.products.length}</div></div>
+    <div class="metric-card"><div class="metric-label">Published</div><div class="metric-value">${state.products.filter(p=>p.published).length}</div></div>
+    <div class="metric-card"><div class="metric-label">Total sales</div><div class="metric-value">${totalSales}</div></div>
+    <div class="metric-card"><div class="metric-label">Revenue (USD)</div><div class="metric-value">$${totalRevUSD.toFixed(0)}</div></div>
+  </div>
+  <div class="card mb20">
+    <div class="flex between center mb12">
+      <h4>Monthly goal</h4><span class="dim small">$${totalRevUSD.toFixed(0)} / $${state.settings.monthlyGoalUSD}</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${goalPct}%"></div></div>
+  </div>
+  <h4 class="mb12">Recent products</h4>
+  ${state.products.length===0 ? emptyState("No products yet","Generate your first AI digital product in Create Product.","create","Create a product") :
+    `<div class="grid grid-3">${state.products.slice(-6).reverse().map(p=>productCardMini(p)).join('')}</div>`}
+  `;
+}
+function emptyState(title,body,navTo,cta){
+  return `<div class="empty"><h4>${title}</h4><p class="small mb12">${body}</p>${navTo?`<button class="btn btn-primary btn-sm" data-nav="${navTo}">${cta}</button>`:''}</div>`;
+}
+function productCardMini(p){
+  return `<div class="card card-tight">
+    <div class="flex between center mb8"><span class="tag tag-ember">${p.niche||'custom'}</span>${p.published?'<span class="tag tag-good">Live</span>':''}</div>
+    <h4 style="font-size:14px;">${p.title}</h4>
+    <p class="faint small" style="margin-top:6px;">${p.pages||0} pages · ${p.template||'minimal'}</p>
+  </div>`;
+}
+function bindDashboard(){ bindGlobal(); }
+
+/* ============================================================
+   CREATE PRODUCT
+   ============================================================ */
+let createUi = { mode:"discovery", niche:"fitness", ideas:null, selectedIdea:null, customIdea:"", format:"guide", template:"minimal", pages:12, loading:false, generated:null };
+
+function renderCreate(){
+  return `
+  <div class="topbar"><div><div class="page-title">Create Product</div><div class="page-sub">Discovery Mode finds the idea for you. Custom Mode lets you drive.</div></div></div>
+  <div class="tabs">
+    <div class="tab ${createUi.mode==='discovery'?'active':''}" data-mode="discovery">Discovery Mode</div>
+    <div class="tab ${createUi.mode==='custom'?'active':''}" data-mode="custom">Custom Mode</div>
+  </div>
+  ${createUi.mode==='discovery' ? renderDiscovery() : renderCustom()}
+  ${createUi.generated ? renderGeneratedPreview() : ''}
+  `;
+}
+
+function renderDiscovery(){
+  return `
+  <div class="card mb20">
+    <div class="flex gap12" style="align-items:flex-end;">
+      <div class="field" style="flex:1; margin-bottom:0;">
+        <label>Niche category</label>
+        <select id="niche-select">
+          ${["fitness","finance","parenting","relationships","productivity","business","wellness"].map(n=>`<option value="${n}" ${createUi.niche===n?'selected':''}>${n[0].toUpperCase()+n.slice(1)}</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn btn-primary" id="btn-discover" ${createUi.loading?'disabled':''}>
+        ${createUi.loading?'<span class="spinner"></span> Scanning…':'Find product ideas'}
+      </button>
+    </div>
+  </div>
+  ${createUi.ideas ? `<div class="grid grid-2 mb20">${createUi.ideas.map((idea,i)=>`
+    <div class="opt-card ${createUi.selectedIdea===i?'selected':''}" data-idea="${i}">
+      <div class="flex between center mb8"><strong style="font-size:14px;">${idea.title}</strong><span class="tag tag-ember">Demand ${idea.demandScore}/10</span></div>
+      <p class="dim small mb8">${idea.problem}</p>
+      <p class="faint small mb8" style="font-style:italic;">"${idea.hook}"</p>
+      <span class="tag">$${idea.priceLow}–$${idea.priceHigh}</span>
+    </div>`).join('')}</div>
+    ${createUi.selectedIdea!==null ? renderCreateOptionsForm(createUi.ideas[createUi.selectedIdea].title) : ''}
+  ` : ''}
+  `;
+}
+function renderCustom(){
+  return `
+  <div class="card mb20">
+    <div class="field"><label>Describe your product idea</label>
+      <textarea id="custom-idea" placeholder="e.g. A 14-day meal prep system for busy dads who want to lose weight without giving up beer on weekends">${createUi.customIdea}</textarea>
+    </div>
+    ${renderCreateOptionsForm(null)}
+  </div>`;
+}
+function renderCreateOptionsForm(prefTitle){
+  return `
+  <div class="grid grid-3 mb16" style="margin-top:14px;">
+    <div class="field"><label>Format</label>
+      <select id="opt-format">
+        ${["PDF guide","Planner","Checklist","eBook","Workbook"].map(f=>`<option ${createUi.format===f?'selected':''}>${f}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field"><label>Visual template</label>
+      <select id="opt-template">
+        ${["Minimal","Bold","Elegant","Modern","Playful"].map(t=>`<option value="${t.toLowerCase()}" ${createUi.template===t.toLowerCase()?'selected':''}>${t}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field"><label>Pages (approx)</label>
+      <input id="opt-pages" type="number" min="4" max="60" value="${createUi.pages}"/>
+    </div>
+  </div>
+  <button class="btn btn-primary" id="btn-generate" ${createUi.loading?'disabled':''}>
+    ${createUi.loading?'<span class="spinner"></span> Forging product…':'Generate product'}
+  </button>
+  `;
+}
+function renderGeneratedPreview(){
+  const g = createUi.generated;
+  return `
+  <div class="divider"></div>
+  <div class="card">
+    <div class="flex between center mb12">
+      <div><h3>${g.title}</h3><p class="dim small">${g.sections.length} sections generated</p></div>
+      <div class="flex gap8"><button class="btn btn-sm" id="btn-export-pdf">Export PDF</button><button class="btn btn-primary btn-sm" id="btn-save-product">Save to dashboard</button></div>
+    </div>
+    <div style="max-height:340px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; padding:14px; background:var(--bg-elev);">
+      ${g.sections.map(s=>`<div class="mb16"><h4 style="font-size:13.5px; color:var(--ember-2);">${s.heading}</h4><p class="small dim" style="margin-top:6px; line-height:1.6; white-space:pre-line;">${s.body}</p></div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function bindCreate(){
+  bindGlobal();
+  document.querySelectorAll('[data-mode]').forEach(el=>el.onclick=()=>{ createUi.mode=el.dataset.mode; render(); });
+  const nicheSel = document.getElementById('niche-select');
+  if(nicheSel) nicheSel.onchange = e=>createUi.niche = e.target.value;
+  const customIdea = document.getElementById('custom-idea');
+  if(customIdea) customIdea.oninput = e=>createUi.customIdea = e.target.value;
+  const fmt = document.getElementById('opt-format'); if(fmt) fmt.onchange=e=>createUi.format=e.target.value;
+  const tpl = document.getElementById('opt-template'); if(tpl) tpl.onchange=e=>createUi.template=e.target.value;
+  const pg = document.getElementById('opt-pages'); if(pg) pg.onchange=e=>createUi.pages=parseInt(e.target.value)||12;
+
+  document.querySelectorAll('[data-idea]').forEach(el=>el.onclick=()=>{ createUi.selectedIdea=parseInt(el.dataset.idea); render(); });
+
+  const discBtn = document.getElementById('btn-discover');
+  if(discBtn) discBtn.onclick = async ()=>{
+    createUi.loading = true; render();
+    try{
+      const ideas = await callClaude(
+        `Give me exactly 8 digital product ideas for the "${createUi.niche}" niche. Each must solve a specific, real pain point people search for. Return ONLY a JSON array, each item: {"title":"","problem":"","demandScore": 1-10, "priceLow": number, "priceHigh": number, "hook":""}. No prose, no markdown fences.`,
+        "You are a product-market researcher. Output only valid JSON.",
+        true
+      );
+      createUi.ideas = ideas; createUi.selectedIdea = null;
+    }catch(e){ showToast(e.message || "Couldn't fetch ideas — try again", true); }
+    createUi.loading = false; render();
+  };
+
+  const genBtn = document.getElementById('btn-generate');
+  if(genBtn) genBtn.onclick = async ()=>{
+    const title = createUi.mode==='discovery' && createUi.selectedIdea!==null ? createUi.ideas[createUi.selectedIdea].title : createUi.customIdea;
+    if(!title || !title.trim()){ showToast("Add a product idea first", true); return; }
+    createUi.loading = true; render();
+    try{
+      const content = await callClaude(
+        `Write the full content for a ${createUi.format} titled "${title}" in the ${createUi.mode==='discovery'?createUi.niche:'general'} niche, roughly ${createUi.pages} pages worth of real content. Return ONLY JSON: {"title":"", "sections":[{"heading":"","body":"(200-400 words, specific and actionable, no fluff)"}]}. Aim for 6-10 sections covering a genuinely complete, sellable product — real steps, plans, or frameworks, never placeholder text.`,
+        "You are an expert content creator writing a real, sellable digital product. Output only valid JSON.",
+        true
+      );
+      if(!content || !Array.isArray(content.sections) || content.sections.length===0){
+        throw new Error("The AI returned an empty product — try generating again.");
+      }
+      createUi.generated = content;
+    }catch(e){ showToast(e.message || "Generation failed — try again", true); }
+    createUi.loading = false; render();
+  };
+
+  const exportBtn = document.getElementById('btn-export-pdf');
+  if(exportBtn) exportBtn.onclick = ()=>exportProductPdf(createUi.generated, createUi.template);
+
+  const saveBtn = document.getElementById('btn-save-product');
+  if(saveBtn) saveBtn.onclick = ()=>{
+    const g = createUi.generated;
+    const product = {
+      id: uid(), title: g.title, niche: createUi.mode==='discovery'?createUi.niche:'custom',
+      format: createUi.format, template: createUi.template, pages: createUi.pages,
+      createdAt: Date.now(), downloadCount:0, content: g, sales:0,
+      priceUSD: 19, priceZAR: Math.round(19*state.settings.zarRate),
+      gumroadUrl:"", payhipUrl:"", whopUrl:"", translations:[], published:false
+    };
+    state.products.push(product);
+    persist();
+    createUi = { mode:"discovery", niche:"fitness", ideas:null, selectedIdea:null, customIdea:"", format:"guide", template:"minimal", pages:12, loading:false, generated:null };
+    state.activeTab = "store";
+    showToast("Product saved", false, true);
+    render();
+  };
+}
+
+function exportProductPdf(g, template){
+  if(!g || !Array.isArray(g.sections) || g.sections.length===0){
+    showToast("No product content to export yet — generate a product first.", true);
+    return;
+  }
+  if(!window.jspdf || !window.jspdf.jsPDF){
+    showToast("The PDF library didn't load — check your connection and refresh the page, then try again.", true);
+    return;
+  }
+  try{
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const colors = {minimal:[20,27,46], bold:[255,106,57], elegant:[26,35,56], modern:[63,214,138], playful:[255,180,77]};
+    const c = colors[template] || colors.minimal;
+    doc.setFillColor(c[0],c[1],c[2]); doc.rect(0,0,210,297,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(26);
+    doc.text(g.title, 20, 140, {maxWidth:170});
+    doc.addPage();
+    doc.setTextColor(20,20,20);
+    let y = 20;
+    g.sections.forEach(s=>{
+      if(y>270){ doc.addPage(); y=20; }
+      doc.setFontSize(15); doc.setTextColor(c[0],c[1],c[2]);
+      doc.text(s.heading, 20, y, {maxWidth:170}); y+=8;
+      doc.setFontSize(10.5); doc.setTextColor(40,40,40);
+      const lines = doc.splitTextToSize(s.body, 170);
+      doc.text(lines, 20, y); y += lines.length*5 + 10;
+    });
+    doc.save(g.title.replace(/[^a-z0-9]/gi,'_')+'.pdf');
+    showToast("PDF downloaded", false, true);
+  }catch(e){ console.error(e); showToast("PDF export failed: " + (e.message||"unknown error"), true); }
+}
+
+/* ============================================================
+   STOREFRONT
+   ============================================================ */
+function renderStore(){
+  if(state.products.length===0) return `<div class="topbar"><div class="page-title">Storefront</div></div>${emptyState("No products to sell yet","Create a product first, then publish it here.","create","Create a product")}`;
+  return `
+  <div class="topbar"><div><div class="page-title">Storefront</div><div class="page-sub">Set pricing, connect checkout, and publish.</div></div></div>
+  <div class="grid grid-3">${state.products.map(p=>renderStoreCard(p)).join('')}</div>
+  `;
+}
+function renderStoreCard(p){
+  return `
+  <div class="card">
+    <div class="flex between center mb8"><span class="tag tag-ember">${p.niche}</span>${p.published?'<span class="tag tag-good">Published</span>':'<span class="tag">Draft</span>'}</div>
+    <h4 style="font-size:14.5px;">${p.title}</h4>
+    <p class="faint small mb12">${p.pages} pages · ${p.template} template</p>
+    <div class="field"><label>Price (USD)</label><input type="number" data-price="${p.id}" value="${p.priceUSD}"/></div>
+    <div class="field"><label>Checkout link (Gumroad / Payhip / Whop)</label><input type="text" data-checkout="${p.id}" placeholder="https://gumroad.com/l/..." value="${p.gumroadUrl||p.payhipUrl||p.whopUrl||''}"/></div>
+    <div class="flex gap8">
+      <button class="btn btn-sm" data-marketing="${p.id}">Marketing</button>
+      <button class="btn btn-primary btn-sm" data-publish="${p.id}" style="margin-left:auto;">${p.published?'Unpublish':'Publish'}</button>
+    </div>
+  </div>`;
+}
+function bindStore(){
+  bindGlobal();
+  document.querySelectorAll('[data-price]').forEach(el=>el.onchange=e=>{
+    const p = state.products.find(x=>x.id===el.dataset.price);
+    p.priceUSD = parseFloat(e.target.value)||0; p.priceZAR = Math.round(p.priceUSD*state.settings.zarRate);
+    persist();
+  });
+  document.querySelectorAll('[data-checkout]').forEach(el=>el.onchange=e=>{
+    const p = state.products.find(x=>x.id===el.dataset.checkout);
+    p.gumroadUrl = e.target.value; persist();
+  });
+  document.querySelectorAll('[data-publish]').forEach(el=>el.onclick=()=>{
+    const p = state.products.find(x=>x.id===el.dataset.publish);
+    p.published = !p.published; persist(); render();
+    showToast(p.published?"Published to your store":"Unpublished", false, p.published);
+  });
+  document.querySelectorAll('[data-marketing]').forEach(el=>el.onclick=()=>{
+    marketingUi.productId = el.dataset.marketing;
+    state.activeTab = "marketing"; render();
+  });
+}
+
+/* ============================================================
+   MARKETING HUB
+   ============================================================ */
+let marketingUi = { productId:null, tab:"scripts", language:"English", loading:false };
+
+function renderMarketing(){
+  if(state.products.length===0) return `<div class="topbar"><div class="page-title">Marketing Hub</div></div>${emptyState("No products yet","Create a product first to generate marketing content for it.","create","Create a product")}`;
+  if(!marketingUi.productId) marketingUi.productId = state.products[state.products.length-1].id;
+  const p = state.products.find(x=>x.id===marketingUi.productId);
+  const m = state.marketing[p.id] || {scripts:[],adcopy:[],captions:[],calendar:[]};
+  return `
+  <div class="topbar"><div><div class="page-title">Marketing Hub</div><div class="page-sub">Niche-aware content for ${p.title}.</div></div></div>
+  <div class="flex gap12 mb16">
+    <select id="mkt-product" style="max-width:280px;">${state.products.map(pp=>`<option value="${pp.id}" ${pp.id===p.id?'selected':''}>${pp.title}</option>`).join('')}</select>
+    <select id="mkt-lang" style="max-width:160px;">${["English","Afrikaans","French","Portuguese","Spanish"].map(l=>`<option ${marketingUi.language===l?'selected':''}>${l}</option>`).join('')}</select>
+  </div>
+  <div class="tabs">
+    ${["scripts","adcopy","captions","calendar"].map(t=>`<div class="tab ${marketingUi.tab===t?'active':''}" data-mtab="${t}">${({scripts:"Video Scripts",adcopy:"Ad Copy",captions:"Captions",calendar:"7-Day Calendar"})[t]}</div>`).join('')}
+  </div>
+  <button class="btn btn-primary mb16" id="btn-gen-mkt" ${marketingUi.loading?'disabled':''}>
+    ${marketingUi.loading?'<span class="spinner"></span> Writing…':'Generate ' + ({scripts:"video script",adcopy:"ad copy",captions:"captions",calendar:"calendar"})[marketingUi.tab]}
+  </button>
+  ${renderMarketingList(m)}
+  `;
+}
+function renderMarketingList(m){
+  const list = m[marketingUi.tab]||[];
+  if(list.length===0) return emptyState("Nothing generated yet","Click generate above.",null,null);
+  if(marketingUi.tab==='scripts') return `<div class="grid grid-2">${list.map(s=>`
+    <div class="card">
+      <div class="flex between center mb8"><strong class="small">Hook</strong><span class="tag tag-ember">${s.platform||'Shorts'}</span></div>
+      <p class="dim small mb8">${s.hook}</p>
+      <div class="divider"></div>
+      <p class="small mb8"><strong>Problem:</strong> ${s.problem}</p>
+      <p class="small mb8"><strong>Reveal:</strong> ${s.reveal}</p>
+      <p class="small mb8"><strong>CTA:</strong> ${s.cta}</p>
+      <p class="faint small">On-screen text: ${s.onscreen}</p>
+      <button class="btn btn-sm mb8" data-tovideo="${s.id}" style="margin-top:10px;">Send to Video Studio →</button>
+    </div>`).join('')}</div>`;
+  if(marketingUi.tab==='adcopy') return `<div class="grid grid-2">${list.map(a=>`
+    <div class="card"><span class="tag tag-ember mb8" style="display:inline-block;">${a.type}</span>
+    <p class="small"><strong>${a.headline}</strong></p><p class="dim small" style="margin-top:6px;">${a.body}</p>
+    <p class="small" style="margin-top:8px;"><em>${a.cta}</em></p></div>`).join('')}</div>`;
+  if(marketingUi.tab==='captions') return `<div class="grid grid-2">${list.map(c=>`
+    <div class="card"><span class="tag mb8" style="display:inline-block;">${c.platform}</span>
+    <p class="small">${c.caption}</p><p class="faint small" style="margin-top:8px;">${c.hashtags}</p></div>`).join('')}</div>`;
+  if(marketingUi.tab==='calendar') return `<div class="card"><table style="width:100%; border-collapse:collapse;">
+    ${list.map(d=>`<tr style="border-bottom:1px solid var(--border);"><td class="small dim" style="padding:8px 4px; width:70px;">Day ${d.day}</td><td class="small" style="padding:8px 4px;"><strong>${d.type}</strong> — ${d.angle}</td></tr>`).join('')}
+    </table></div>`;
+  return '';
+}
+function bindMarketing(){
+  bindGlobal();
+  const sel = document.getElementById('mkt-product'); if(sel) sel.onchange=e=>{ marketingUi.productId=e.target.value; render(); };
+  const lang = document.getElementById('mkt-lang'); if(lang) lang.onchange=e=>{ marketingUi.language=e.target.value; };
+  document.querySelectorAll('[data-mtab]').forEach(el=>el.onclick=()=>{ marketingUi.tab=el.dataset.mtab; render(); });
+  document.querySelectorAll('[data-tovideo]').forEach(el=>el.onclick=()=>{
+    videoUi.productId = marketingUi.productId;
+    videoUi.scriptId = el.dataset.tovideo;
+    state.activeTab = "video"; render();
+  });
+  const genBtn = document.getElementById('btn-gen-mkt');
+  if(genBtn) genBtn.onclick = async ()=>{
+    const p = state.products.find(x=>x.id===marketingUi.productId);
+    marketingUi.loading = true; render();
+    try{
+      let prompt, key = marketingUi.tab;
+      if(key==='scripts') prompt = `Write ONE 30-60s short-form video script (TikTok/Reels/Shorts) in ${marketingUi.language} for a digital product called "${p.title}" (niche: ${p.niche}). Return ONLY JSON: {"hook":"(first 3 seconds, punchy)","problem":"","reveal":"","cta":"","onscreen":"(on-screen text suggestions)","platform":"TikTok/Reels/Shorts"}`;
+      if(key==='adcopy') prompt = `Write ONE paid Facebook/Instagram ad AND one organic angle in ${marketingUi.language} for "${p.title}" (niche: ${p.niche}). Return ONLY JSON: {"type":"Paid Ad","headline":"","body":"","cta":""}`;
+      if(key==='captions') prompt = `Write ONE TikTok caption and hashtags in ${marketingUi.language} for "${p.title}" (niche: ${p.niche}). Return ONLY JSON: {"platform":"TikTok","caption":"","hashtags":"#..."}`;
+      if(key==='calendar') prompt = `Create a 7-day organic + paid posting schedule in ${marketingUi.language} for "${p.title}" (niche: ${p.niche}). Return ONLY JSON array of 7 items: [{"day":1,"type":"Organic video / Story / Reel / Paid ad","angle":""}]`;
+      const result = await callClaude(prompt, "You write niche-aware, tone-matched marketing content. Output only valid JSON.", true);
+      if(!state.marketing[p.id]) state.marketing[p.id] = {scripts:[],adcopy:[],captions:[],calendar:[]};
+      if(key==='calendar'){ state.marketing[p.id].calendar = result; }
+      else { result.id = uid(); state.marketing[p.id][key].push(result); }
+      persist();
+    }catch(e){ showToast("Generation failed — try again", true); }
+    marketingUi.loading = false; render();
+  };
+}
+
+/* ============================================================
+   VIDEO STUDIO (new module)
+   ============================================================ */
+let videoUi = { productId:null, scriptId:null, provider:"heygen", loading:false };
+
+function renderVideo(){
+  if(state.products.length===0) return `<div class="topbar"><div class="page-title">Video Studio</div></div>${emptyState("No products yet","Create a product, generate a script in Marketing Hub, then come back here.","create","Create a product")}`;
+  if(!videoUi.productId) videoUi.productId = state.products[state.products.length-1].id;
+  const p = state.products.find(x=>x.id===videoUi.productId);
+  const scripts = (state.marketing[p.id]||{}).scripts || [];
+  const videos = state.videos[p.id] || [];
+  const script = scripts.find(s=>s.id===videoUi.scriptId) || scripts[scripts.length-1];
+  return `
+  <div class="topbar"><div><div class="page-title">Video Studio</div><div class="page-sub">Script → AI-avatar video → post out. New: this ties your product straight to a finished, publishable clip.</div></div></div>
+  <select id="vid-product" style="max-width:280px; margin-bottom:16px;">${state.products.map(pp=>`<option value="${pp.id}" ${pp.id===p.id?'selected':''}>${pp.title}</option>`).join('')}</select>
+
+  ${scripts.length===0 ? emptyState("No script yet for this product","Generate a video script in Marketing Hub first, then send it here.","marketing","Go to Marketing Hub") : `
+  <div class="grid grid-2 mb20">
+    <div class="card">
+      <label>Script</label>
+      <select id="vid-script" class="mb12">${scripts.map(s=>`<option value="${s.id}" ${script&&script.id===s.id?'selected':''}>${s.hook.slice(0,40)}…</option>`).join('')}</select>
+      <p class="small dim mb8"><strong>Hook:</strong> ${script.hook}</p>
+      <p class="small dim mb8"><strong>Reveal:</strong> ${script.reveal}</p>
+      <p class="small dim mb12"><strong>CTA:</strong> ${script.cta}</p>
+      <div class="field"><label>Avatar video provider</label>
+        <select id="vid-provider">
+          <option value="heygen" ${videoUi.provider==='heygen'?'selected':''}>HeyGen</option>
+          <option value="creatify" ${videoUi.provider==='creatify'?'selected':''}>Creatify</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="btn-gen-video" ${videoUi.loading?'disabled':''}>
+        ${videoUi.loading?'<span class="spinner"></span> Rendering…':'Generate video'}
+      </button>
+      <p class="hint">Uses the API key set in Settings. Browser-based apps can't always call video-render APIs directly (CORS) — if this fails, it's expected until the Railway Express proxy is live, and this button will work unchanged once it is.</p>
+    </div>
+    <div class="card">
+      <h4 class="mb12">Publish out</h4>
+      <p class="small dim mb12">Push the finished video (or the script + assets, if generation isn't wired up yet) to your automation so it lands on TikTok, IG, and YouTube.</p>
+      <div class="field"><label>n8n / Make webhook URL</label><input id="vid-webhook" placeholder="https://your-n8n.app/webhook/..." value="${state.settings.n8nWebhook}"/></div>
+      <button class="btn" id="btn-send-webhook">Send to automation</button>
+      <p class="hint">This posts the product, script, and video URL (if rendered) to your webhook — from there your existing n8n flow handles TikTok/IG/YouTube upload, matching the pipeline you already have partly built.</p>
+    </div>
+  </div>
+  <h4 class="mb12">Rendered videos for ${p.title}</h4>
+  ${videos.length===0 ? emptyState("No videos rendered yet","","",null) :
+    `<div class="grid grid-3">${videos.map(v=>`<div class="card card-tight">
+      <div class="flex between center mb8"><span class="tag ${v.status==='ready'?'tag-good':v.status==='failed'?'':''}">${v.status}</span><span class="faint small">${v.provider}</span></div>
+      ${v.url?`<a href="${v.url}" target="_blank" class="small">Open video →</a>`:'<p class="faint small">No URL — proxy needed for live render.</p>'}
+    </div>`).join('')}</div>`}
+  `}
+  `;
+}
+function bindVideo(){
+  bindGlobal();
+  const sel = document.getElementById('vid-product'); if(sel) sel.onchange=e=>{ videoUi.productId=e.target.value; videoUi.scriptId=null; render(); };
+  const scriptSel = document.getElementById('vid-script'); if(scriptSel) scriptSel.onchange=e=>{ videoUi.scriptId=e.target.value; render(); };
+  const provSel = document.getElementById('vid-provider'); if(provSel) provSel.onchange=e=>{ videoUi.provider=e.target.value; };
+  const webhookInput = document.getElementById('vid-webhook'); if(webhookInput) webhookInput.onchange=e=>{ state.settings.n8nWebhook=e.target.value; persist(); };
+
+  const genBtn = document.getElementById('btn-gen-video');
+  if(genBtn) genBtn.onclick = async ()=>{
+    const p = state.products.find(x=>x.id===videoUi.productId);
+    const scripts = (state.marketing[p.id]||{}).scripts||[];
+    const script = scripts.find(s=>s.id===videoUi.scriptId) || scripts[scripts.length-1];
+    const key = videoUi.provider==='heygen' ? state.settings.heygenKey : state.settings.creatifyKey;
+    if(!key){ showToast("Add your " + videoUi.provider + " API key in Settings first", true); return; }
+    videoUi.loading = true; render();
+    const videoRecord = { id: uid(), scriptId: script.id, provider: videoUi.provider, status:"rendering", url:null, createdAt: Date.now() };
+    try{
+      const endpoint = videoUi.provider==='heygen'
+        ? "https://api.heygen.com/v2/video/generate"
+        : "https://api.creatify.ai/api/lipsyncs/";
+      const res = await fetch(endpoint, {
+        method:"POST",
+        headers:{"Content-Type":"application/json", "X-Api-Key": key},
+        body: JSON.stringify({ script: `${script.hook} ${script.problem} ${script.reveal} ${script.cta}` })
+      });
+      if(!res.ok) throw new Error("render_failed");
+      const data = await res.json();
+      videoRecord.status = "ready";
+      videoRecord.url = data.video_url || data.url || null;
+      showToast("Video rendered", false, true);
+    }catch(e){
+      videoRecord.status = "failed";
+      showToast("Direct render blocked by the browser (CORS) — this needs the Railway proxy in front of " + videoUi.provider + ". The request is saved and ready to wire up.", true);
+    }
+    if(!state.videos[p.id]) state.videos[p.id] = [];
+    state.videos[p.id].push(videoRecord);
+    persist();
+    videoUi.loading = false; render();
+  };
+
+  const sendBtn = document.getElementById('btn-send-webhook');
+  if(sendBtn) sendBtn.onclick = async ()=>{
+    const url = state.settings.n8nWebhook;
+    if(!url){ showToast("Add a webhook URL first", true); return; }
+    const p = state.products.find(x=>x.id===videoUi.productId);
+    const videos = state.videos[p.id]||[];
+    try{
+      await fetch(url, { method:"POST", mode:"no-cors", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ product: p.title, storeUrl: p.gumroadUrl, videos }) });
+      showToast("Sent to automation", false, true);
+    }catch(e){ showToast("Couldn't reach webhook — check the URL", true); }
+  };
+}
+
+/* ============================================================
+   ANALYTICS
+   ============================================================ */
+function renderAnalytics(){
+  const totalSales = state.products.reduce((a,p)=>a+(p.sales||0),0);
+  const totalUSD = state.products.reduce((a,p)=>a+((p.sales||0)*(p.priceUSD||0)),0);
+  const totalZAR = totalUSD * state.settings.zarRate;
+  const goalPct = Math.min(100, Math.round((totalUSD/(state.settings.monthlyGoalUSD||1))*100));
+  return `
+  <div class="topbar"><div><div class="page-title">Finance &amp; Analytics</div><div class="page-sub">Gumroad, Payhip, and Whop revenue in one view.</div></div></div>
+  <div class="grid grid-4 mb20">
+    <div class="metric-card"><div class="metric-label">Revenue (USD)</div><div class="metric-value">$${totalUSD.toFixed(0)}</div></div>
+    <div class="metric-card"><div class="metric-label">Revenue (ZAR)</div><div class="metric-value">R${totalZAR.toFixed(0)}</div></div>
+    <div class="metric-card"><div class="metric-label">Total sales</div><div class="metric-value">${totalSales}</div></div>
+    <div class="metric-card"><div class="metric-label">Conversion</div><div class="metric-value">—</div></div>
+  </div>
+  <div class="card mb20">
+    <div class="flex between center mb12"><h4>Monthly goal</h4><span class="dim small">${goalPct}%</span></div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${goalPct}%"></div></div>
+  </div>
+  <div class="card mb20">
+    <h4 class="mb12">Product performance</h4>
+    ${state.products.length===0?emptyState("No products yet","","create","Create a product"):`
+    <table style="width:100%; border-collapse:collapse;">
+      <tr style="border-bottom:1px solid var(--border);"><td class="faint small" style="padding:6px 4px;">Product</td><td class="faint small">Sales</td><td class="faint small">Revenue</td><td class="faint small">UTM link</td></tr>
+      ${state.products.map(p=>`<tr style="border-bottom:1px solid var(--border);">
+        <td class="small" style="padding:8px 4px;">${p.title}</td>
+        <td class="small">${p.sales||0}</td>
+        <td class="small">$${((p.sales||0)*p.priceUSD).toFixed(0)}</td>
+        <td class="small"><button class="btn btn-sm" data-utm="${p.id}">Generate</button></td>
+      </tr>`).join('')}
+    </table>`}
+  </div>
+  <div class="card">
+    <h4 class="mb12">Manual sale entry</h4>
+    <p class="small dim mb12">Live Gumroad/Payhip/Whop API sync needs a backend proxy for auth (browser CORS blocks direct calls) — add the keys in Settings for when the proxy is live. Until then, log sales here to keep the dashboard accurate.</p>
+    <div class="flex gap12">
+      <select id="sale-product" style="max-width:220px;">${state.products.map(p=>`<option value="${p.id}">${p.title}</option>`).join('')}</select>
+      <input id="sale-count" type="number" placeholder="Sales to add" style="max-width:140px;"/>
+      <button class="btn btn-primary" id="btn-add-sale">Add</button>
+    </div>
+  </div>
+  `;
+}
+function bindAnalytics(){
+  bindGlobal();
+  document.querySelectorAll('[data-utm]').forEach(el=>el.onclick=()=>{
+    const p = state.products.find(x=>x.id===el.dataset.utm);
+    const utm = `${p.gumroadUrl||'https://yourstore.com/'+p.id}?utm_source=tiktok&utm_medium=organic&utm_campaign=${encodeURIComponent(p.title.replace(/\s+/g,'_'))}`;
+    navigator.clipboard.writeText(utm).catch(()=>{});
+    showToast("UTM link copied", false, true);
+  });
+  const addBtn = document.getElementById('btn-add-sale');
+  if(addBtn) addBtn.onclick = ()=>{
+    const pid = document.getElementById('sale-product').value;
+    const n = parseInt(document.getElementById('sale-count').value)||0;
+    const p = state.products.find(x=>x.id===pid);
+    if(p && n>0){ p.sales = (p.sales||0)+n; persist(); render(); showToast("Sales updated", false, true); }
+  };
+}
+
+/* ============================================================
+   LINK IN BIO
+   ============================================================ */
+function renderLinkBio(){
+  const pub = state.products.filter(p=>p.published);
+  return `
+  <div class="topbar"><div><div class="page-title">Link in Bio</div><div class="page-sub">One shareable page for all published products.</div></div></div>
+  <div class="card" style="max-width:420px; margin:0 auto; text-align:center;">
+    <div class="brand-mark" style="margin:0 auto 12px;"></div>
+    <h3>Your Store</h3>
+    <p class="faint small mb16">yourstore.forge.link</p>
+    ${pub.length===0?`<p class="dim small">Publish a product from the Storefront to show it here.</p>`:
+      pub.map(p=>`<div class="btn" style="width:100%; margin-bottom:10px; justify-content:space-between;"><span>${p.title}</span><span class="tag tag-ember">$${p.priceUSD}</span></div>`).join('')}
+  </div>
+  `;
+}
+function bindLinkBio(){ bindGlobal(); }
+
+/* ============================================================
+   SETTINGS
+   ============================================================ */
+function renderSettings(){
+  const s = state.settings;
+  return `
+  <div class="topbar"><div><div class="page-title">Settings</div><div class="page-sub">Checkout, video, and automation connections.</div></div></div>
+  <div class="grid grid-2">
+    <div class="card">
+      <h4 class="mb12">Payments</h4>
+      <div class="field"><label>Gumroad API key</label><input id="s-gumroad" value="${s.gumroadKey}" type="password"/></div>
+      <div class="field"><label>Payhip API key</label><input id="s-payhip" value="${s.payhipKey}" type="password"/></div>
+      <div class="field"><label>Whop API key</label><input id="s-whop" value="${s.whopKey}" type="password"/></div>
+      <p class="hint">Stored in your private app storage, not shared. For production, route these calls through your Railway/Express proxy rather than the browser.</p>
+    </div>
+    <div class="card">
+      <h4 class="mb12">Video generation</h4>
+      <div class="field"><label>HeyGen API key</label><input id="s-heygen" value="${s.heygenKey}" type="password"/></div>
+      <div class="field"><label>Creatify API key</label><input id="s-creatify" value="${s.creatifyKey}" type="password"/></div>
+      <div class="field"><label>n8n / Make webhook (auto-post)</label><input id="s-webhook" value="${s.n8nWebhook}"/></div>
+    </div>
+    <div class="card">
+      <h4 class="mb12">Currency &amp; goals</h4>
+      <div class="field"><label>ZAR / USD rate</label><input id="s-rate" type="number" step="0.1" value="${s.zarRate}"/></div>
+      <div class="field"><label>Monthly income goal (USD)</label><input id="s-goal" type="number" value="${s.monthlyGoalUSD}"/></div>
+    </div>
+    <div class="card">
+      <h4 class="mb12">Data</h4>
+      <p class="small dim mb12">Everything is saved automatically to this app's private storage as you go.</p>
+      <button class="btn" id="btn-reset">Reset all data</button>
+    </div>
+  </div>
+  `;
+}
+function bindSettings(){
+  bindGlobal();
+  const map = {'s-gumroad':'gumroadKey','s-payhip':'payhipKey','s-whop':'whopKey','s-heygen':'heygenKey','s-creatify':'creatifyKey','s-webhook':'n8nWebhook'};
+  Object.keys(map).forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.onchange = e=>{ state.settings[map[id]] = e.target.value; persist(); };
+  });
+  const rate = document.getElementById('s-rate'); if(rate) rate.onchange=e=>{ state.settings.zarRate=parseFloat(e.target.value)||18.5; persist(); };
+  const goal = document.getElementById('s-goal'); if(goal) goal.onchange=e=>{ state.settings.monthlyGoalUSD=parseFloat(e.target.value)||1000; persist(); };
+  const reset = document.getElementById('btn-reset');
+  if(reset) reset.onclick = async ()=>{
+    if(!confirm("This clears all products, marketing content, and settings. Continue?")) return;
+    state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+    render();
+  };
+}
+
+/* ---------- init ---------- */
+loadState();
+</script>
+</body>
+</html>
